@@ -1,9 +1,11 @@
 #!/usr/bin/env python3 
-
+import os
 import click
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+import plots as pl
 
 
 def explore_columns(df):
@@ -19,21 +21,23 @@ def date_engineering(df):
     df['Fecha_caducidad'] = pd.to_datetime(df['lot_fecha_caducidad'])
     df['Fecha_alta'] = pd.to_datetime(df['lot_fecha_alta'])
     df['Diferencia_caducidad'] = (df['Fecha_caducidad'] - df['Fecha_alta']).dt.days
+    df = df.drop(['Fecha_alta', 'Fecha_caducidad', \
+        'lot_fecha_caducidad', 'lot_fecha_alta'], axis=1)
 
     return df
 
 
 #TODO <JB> This snippet takes nans away, is that what we want?
 def classify_products(df):
-    super_fresh = df[df['Diferencia_caducidad'] < 15]
-    super_fresh['Tipo_Producto'] = 'Super Fresco'
+    Ultra_fresh = df[df['Diferencia_caducidad'] < 15]
+    Ultra_fresh['Tipo_Producto'] = 'Ultra Fresco'
     fresh = df[(df['Diferencia_caducidad'] >= 15) & \
         (df['Diferencia_caducidad'] <= 60)]
     fresh['Tipo_Producto'] = 'Fresco'
     dry = df[df['Diferencia_caducidad'] > 60]
     dry['Tipo_Producto'] = 'Seco'
 
-    return pd.concat([super_fresh, fresh, dry])
+    return pd.concat([Ultra_fresh, fresh, dry])
 
 
 def group_by_discount_section(df):
@@ -57,46 +61,52 @@ def group_by_discount_section(df):
     return rel_df
 
 
-def plot_groups(df):
-    sns.set(rc={'figure.figsize':(7,5)})
-    sns.set_style('whitegrid')
+def limpiar_clientes(df, categoria_cliente):
 
-    ax = sns.barplot(data=df, x='Relative_counts', y='Descuento', 
-        hue='Tipo_Producto', hue_order=['Seco', 'Fresco', 'Super Fresco'])
+    limp_clientes = pd.read_csv(categoria_cliente, sep='\t')
+    clientes = limp_clientes[['cli_rao', 'Tipología cliente ok']]
+    merge_clientes = pd.merge(df, clientes, how='inner', on='cli_rao')
 
-    ax.grid(False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    df = merge_clientes[merge_clientes['Tipología cliente ok'] != 'quitar'].drop(
+        ['Tipología cliente ok'], axis=1
+    )
 
-    plt.tight_layout()
-    plt.savefig('discount_and_product.png')
-    plt.close()
+    return df
 
 
-def plot_subgroups(df):
-    sns.set(rc={'figure.figsize':(7,5)})
-    sns.set_style('whitegrid')
+def group_discount_50(df):
+    df_toplot = pd.DataFrame()
+    for i, j in [(0,49), (50, 100)]:
+        
+        int_df = pd.DataFrame(df[(df['lin_dte'] >= i) & \
+            (df['lin_dte'] <= j)].groupby(['Tipo_Producto', 'year']).apply(
+                lambda x: x.shape[0])).reset_index()
 
-    for i, j in df.groupby('Descuento'):
-        ax = sns.barplot(data=j, x='Relative_counts', y='Descuento', 
-            hue='Tipo_Producto', hue_order=['Seco', 'Fresco', 'Super Fresco'])
+        int_df['Descuento'] = '{}-{}%'.format(i,j)
+        df_toplot = pd.concat([df_toplot, int_df])
 
-        ax.grid(False)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+    rel_df = pd.DataFrame()
+    for k, l in df_toplot.groupby(['Tipo_Producto', 'year']):
+        l['Relative_counts'] = l[0] / df[(df['Tipo_Producto'] == k[0]) & (df['year'] == k[1])].shape[0]
+        rel_df = pd.concat([rel_df, l])
 
-        plt.tight_layout()
-        plt.savefig('discount_and_product_{}.png'.format(i))
-        plt.close()
+    return rel_df
+
+
+def analyze_products(df):
+    df = df[df['lin_dte'] >= 50]
+    return df.groupby(['Tipo_Producto', 'sub_descrip']).apply(
+        lambda x: x.shape[0]).reset_index()
 
 
 @click.command(short_help='explore input data valcoiberia')
 @click.option('-d', '--data', required=True, help='tsv file containing the data')
+@click.option('-cc', '--categoria_cliente', default='', help='limpieza clientes')
 @click.option('-o', '--output', help='Path to save file')
-def main(data, output):
+def main(data, categoria_cliente, output):
     #load the data
     df = pd.read_csv(data, sep='\t') 
-
+    
     #Remove all coluns that contain only nans
     df = df.dropna(axis=1, how='all') 
 
@@ -107,18 +117,34 @@ def main(data, output):
     #drop columns that have the same info in other columns
     df = df.drop(['fam_codi'], axis=1)
 
+    if categoria_cliente:
+        df = limpiar_clientes(df, categoria_cliente)
+
+    #TODO one of the things that can be done is to delete those columns with many unique
+    #so far not all columns are important for sure
+
     #Obtain the days that takes to the product to expire
     df = date_engineering(df)
+    df['year'] = pd.DatetimeIndex(df['cpa_datalb']).year
 
     #Classify products based on the days to expire in three groups
-    #Super fresh, fresh and dry
+    #Ultra fresh, fresh and dry
     df = classify_products(df)
 
-    df = group_by_discount_section(df)
+    #get different sections of discount
+    rel_df = group_by_discount_section(df)
+
+    #split discounts only in two to analyze changes within time 
+    df_discount = group_discount_50(df)
+    df_discount.to_csv(os.path.join(output, 'discount_50.tsv'), sep='\t', index=None)
+    
+    df_products = analyze_products(df)
 
     #Generate plots
-    plot_groups(df)
-    plot_subgroups(df)
+    pl.plot_groups(rel_df)
+    pl.plot_subgroups(rel_df)
+    pl.plot_evolution_discount(df_discount, output)
+    pl.plot_products_discounted(df_products, output)
 
 
 if __name__ == '__main__':
