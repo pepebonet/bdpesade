@@ -1,2 +1,3 @@
 data/*
 documents/*
+libs/__pycache__/*
