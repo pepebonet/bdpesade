@@ -16,7 +16,7 @@ def main(folder_data, output):
     all_year_dfs = {} 
     for folder in [f.path for f in os.scandir(folder_data) if f.is_dir()]:
         df_year = pd.DataFrame(); year = folder.rsplit('/', 1)[-1]
-
+        import pdb;pdb.set_trace()
         for file in os.listdir(folder):
             wb = load_workbook(filename=os.path.join(folder, file))
             ws = wb.active
