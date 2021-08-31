@@ -1,3 +1,4 @@
 data/*
 documents/*
 libs/__pycache__/*
+*tsv
