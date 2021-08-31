@@ -2,8 +2,6 @@
 import os
 import click
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 import plots as pl
 
@@ -105,7 +103,7 @@ def analyze_products(df):
 @click.option('-o', '--output', help='Path to save file')
 def main(data, categoria_cliente, output):
     #load the data
-    df = pd.read_csv(data, sep='\t') 
+    df = pd.read_csv(data, sep='\t', nrows=10000000) 
     
     #Remove all coluns that contain only nans
     df = df.dropna(axis=1, how='all') 
@@ -130,7 +128,7 @@ def main(data, categoria_cliente, output):
     #Classify products based on the days to expire in three groups
     #Ultra fresh, fresh and dry
     df = classify_products(df)
-
+    import pdb;pdb.set_trace()
     #get different sections of discount
     rel_df = group_by_discount_section(df)
 
