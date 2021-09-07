@@ -41,7 +41,7 @@ def plot_evolution_discount(df, output):
     sns.set_style('whitegrid')
 
     for i, j in df.groupby('Descuento'):
-        ax = sns.barplot(data=j, x='year', y='Relative_counts', 
+        ax = sns.barplot(data=j, x='Ejercicio', y='Relative_counts', 
             hue='Tipo_Producto', hue_order=['Seco', 'Fresco', 'Ultra Fresco'])
 
         ax.grid(False)
