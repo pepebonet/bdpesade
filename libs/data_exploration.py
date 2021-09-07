@@ -1,6 +1,7 @@
 #!/usr/bin/env python3 
 import os
 import click
+import pickle
 import pandas as pd
 
 import plots as pl
@@ -97,38 +98,73 @@ def analyze_products(df):
         lambda x: x.shape[0]).reset_index()
 
 
+def clean_dataset(df, path):
+    names_dict = {}; cols = df.columns
+    with open(path) as f:
+        for line in f: 
+            new_col = line.split('\'')[1]
+            column_number = int(line.split('column')[1].split(',')[0]) - 2
+
+            if 'Eliminar' in line:
+                names_dict.update({cols[column_number]: 'delete'})
+                df.drop([cols[column_number]], axis=1, inplace=True)
+            
+            else:
+                df.rename(columns={cols[column_number]: new_col}, inplace=True)
+                names_dict.update({cols[column_number]: new_col})
+
+    return df, names_dict
+
+
 @click.command(short_help='explore input data valcoiberia')
-@click.option('-d', '--data', required=True, help='tsv file containing the data')
-@click.option('-cc', '--categoria_cliente', default='', help='limpieza clientes')
-@click.option('-o', '--output', help='Path to save file')
-def main(data, categoria_cliente, output):
-    #load the data
+@click.option(
+    '-d', '--data', required=True, help='tsv file containing the data'
+)
+@click.option(
+    '-cc', '--categoria_cliente', default='', help='limpieza clientes'
+)
+@click.option(
+    '-cnc', '--clean_names_columns', default='', 
+    help='list to rename or delete certain columns'
+)
+@click.option(
+    '-o', '--output', help='Path to save file'
+)
+def main(data, categoria_cliente, clean_names_columns, output):
+
+    # Load the data
     df = pd.read_csv(data, sep='\t', nrows=10000000) 
     
-    #Remove all coluns that contain only nans
+    # Remove all coluns that contain only nans
     df = df.dropna(axis=1, how='all') 
-
-    #Remove all columns with more than 1M nans, with nuniques per column < 5
+    
+    # Remove all columns with more than 1M nans, with nuniques per column < 5
     # and with value counts for the largest value larger than 1M
     df = explore_columns(df)
 
-    #drop columns that have the same info in other columns
+    # Drop columns that have the same info in other columns
+
     df = df.drop(['fam_codi'], axis=1)
 
     if categoria_cliente:
         df = limpiar_clientes(df, categoria_cliente)
 
-    #TODO one of the things that can be done is to delete those columns with many unique
-    #so far not all columns are important for sure
-
     #Obtain the days that takes to the product to expire
     df = date_engineering(df)
     df['year'] = pd.DatetimeIndex(df['cpa_datalb']).year
 
-    #Classify products based on the days to expire in three groups
-    #Ultra fresh, fresh and dry
+    #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
+    
+    df, names_dict = clean_dataset(df, clean_names_columns)
     import pdb;pdb.set_trace()
+    #save outputs
+    out_file = os.path.join(output, 'final_cleaned_data.tsv')
+    df.to_csv(out_file, sep='\t', index=None)
+
+    with open(os.path.join(output, 'dict_names.pickle', 'wb')) as h:
+        pickle.dump(names_dict, h, protocol=pickle.HIGHEST_PROTOCOL)
+
     #get different sections of discount
     rel_df = group_by_discount_section(df)
 
@@ -143,6 +179,11 @@ def main(data, categoria_cliente, output):
     pl.plot_subgroups(rel_df)
     pl.plot_evolution_discount(df_discount, output)
     pl.plot_products_discounted(df_products, output)
+
+
+    #TODO <JB>
+    # 1.- delete those columns with many unique
+    # 2.- separate plot generation from cleaning
 
 
 if __name__ == '__main__':
