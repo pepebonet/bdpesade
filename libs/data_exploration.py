@@ -116,6 +116,23 @@ def clean_dataset(df, path):
     return df, names_dict
 
 
+def remove_duplicated_columns(df):
+
+    ncol = len(df.columns)
+    in_col = df.columns
+    
+    for i in range(ncol):
+        if in_col[i] in df:
+            for j in range(i + 1, ncol):
+                if in_col[j] in df:
+                    to_assert = df[in_col[i]].values == df[in_col[j]].values
+                    if to_assert.all():
+                        df.drop([in_col[j]], axis=1, inplace=True)
+    
+    return df
+    
+
+
 @click.command(short_help='explore input data valcoiberia')
 @click.option(
     '-d', '--data', required=True, help='tsv file containing the data'
@@ -135,7 +152,7 @@ def main(data, categoria_cliente, clean_names_columns, output):
     # Load the data
     df = pd.read_csv(data, sep='\t', nrows=10000000) 
     
-    # Remove all coluns that contain only nans
+    # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
     
     # Remove all columns with more than 1M nans, with nuniques per column < 5
@@ -143,7 +160,6 @@ def main(data, categoria_cliente, clean_names_columns, output):
     df = explore_columns(df)
 
     # Drop columns that have the same info in other columns
-
     df = df.drop(['fam_codi'], axis=1)
 
     if categoria_cliente:
@@ -157,12 +173,21 @@ def main(data, categoria_cliente, clean_names_columns, output):
     df = classify_products(df)
     
     df, names_dict = clean_dataset(df, clean_names_columns)
+
+    df = remove_duplicated_columns(df)
     import pdb;pdb.set_trace()
+    
+    df.drop(['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
+        'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
+        'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
+        'lin_agent2', 'Cba_Codigo'], axis=1, inplace=True)
+    import pdb;pdb.set_trace()
+
     #save outputs
     out_file = os.path.join(output, 'final_cleaned_data.tsv')
     df.to_csv(out_file, sep='\t', index=None)
-
-    with open(os.path.join(output, 'dict_names.pickle', 'wb')) as h:
+    import pdb;pdb.set_trace()
+    with open(os.path.join(output, 'dict_names.pickle'), 'wb') as h:
         pickle.dump(names_dict, h, protocol=pickle.HIGHEST_PROTOCOL)
 
     #get different sections of discount
