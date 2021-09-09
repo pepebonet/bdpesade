@@ -6,6 +6,11 @@ import pandas as pd
 
 import plots as pl
 
+to_drop = ['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
+        'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
+        'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
+        'lin_agent2', 'Cba_Codigo']
+
 
 def explore_columns(df):
     for col in df:
@@ -98,7 +103,7 @@ def analyze_products(df):
         lambda x: x.shape[0]).reset_index()
 
 
-def clean_dataset(df, path):
+def get_dict_tmp_1(df, path):
     names_dict = {}; cols = df.columns
     with open(path) as f:
         for line in f: 
@@ -112,6 +117,26 @@ def clean_dataset(df, path):
             else:
                 df.rename(columns={cols[column_number]: new_col}, inplace=True)
                 names_dict.update({cols[column_number]: new_col})
+    
+    return df, names_dict
+
+
+def get_dict_tmp_2(df, path):
+    names_dict = {}
+    with open(path) as f:
+        for line in f: 
+
+            new_col = line.split('\'')[1]
+            old_name = line.split(',')[0].split('[')[1]
+
+            if old_name in df:
+                if 'Eliminar' in line:
+                    names_dict.update({old_name: 'delete'})
+                    df.drop([old_name], axis=1, inplace=True)
+                
+                else:
+                    df.rename(columns={old_name: new_col}, inplace=True)
+                    names_dict.update({old_name: new_col})
 
     return df, names_dict
 
@@ -130,8 +155,13 @@ def remove_duplicated_columns(df):
                         df.drop([in_col[j]], axis=1, inplace=True)
     
     return df
-    
 
+
+def clean_df(df, dict_names):
+
+    for i, j in dict_names.items():
+        import pdb;pdb.set_trace()
+    
 
 @click.command(short_help='explore input data valcoiberia')
 @click.option(
@@ -141,16 +171,24 @@ def remove_duplicated_columns(df):
     '-cc', '--categoria_cliente', default='', help='limpieza clientes'
 )
 @click.option(
-    '-cnc', '--clean_names_columns', default='', 
+    '-cn1', '--clean_names_1', default='', 
     help='list to rename or delete certain columns'
+)
+@click.option(
+    '-cn2', '--clean_names_2', default='', 
+    help='list to rename or delete certain columns'
+)
+@click.option(
+    '-nd', '--names_dict', default='', 
+    help='dict containing column names to change or delete '
 )
 @click.option(
     '-o', '--output', help='Path to save file'
 )
-def main(data, categoria_cliente, clean_names_columns, output):
+def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, output):
 
     # Load the data
-    df = pd.read_csv(data, sep='\t', nrows=10000000) 
+    df = pd.read_csv(data, sep='\t', nrows=2000000) 
     
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
@@ -172,13 +210,17 @@ def main(data, categoria_cliente, clean_names_columns, output):
     #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
     
-    df, names_dict = clean_dataset(df, clean_names_columns)
+    # df = clean_df(names_dict)
+    df, names_dict_2 = get_dict_tmp_1(df, clean_names_1)
+    df, names_dict_3 = get_dict_tmp_2(df, clean_names_2)
+    # import pdb;pdb.set_trace()
+    # df = clean_df(names_dict)
 
     df = remove_duplicated_columns(df)
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     
     df.drop(['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
-        'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
+        'Lin_p_serie', 'Lin_p_numero', 'Lin_Unit', 'lin_p_linea', 'lin_crestastock', 
         'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
         'lin_agent2', 'Cba_Codigo'], axis=1, inplace=True)
     import pdb;pdb.set_trace()
