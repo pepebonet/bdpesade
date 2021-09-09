@@ -6,7 +6,7 @@ import pandas as pd
 
 import plots as pl
 
-to_drop = ['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
+to_delete = ['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
         'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
         'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
         'lin_agent2', 'Cba_Codigo']
@@ -112,10 +112,10 @@ def get_dict_tmp_1(df, path):
 
             if 'Eliminar' in line:
                 names_dict.update({cols[column_number]: 'delete'})
-                df.drop([cols[column_number]], axis=1, inplace=True)
+                # df.drop([cols[column_number]], axis=1, inplace=True)
             
             else:
-                df.rename(columns={cols[column_number]: new_col}, inplace=True)
+                # df.rename(columns={cols[column_number]: new_col}, inplace=True)
                 names_dict.update({cols[column_number]: new_col})
     
     return df, names_dict
@@ -132,11 +132,22 @@ def get_dict_tmp_2(df, path):
             if old_name in df:
                 if 'Eliminar' in line:
                     names_dict.update({old_name: 'delete'})
-                    df.drop([old_name], axis=1, inplace=True)
+                    # df.drop([old_name], axis=1, inplace=True)
                 
                 else:
-                    df.rename(columns={old_name: new_col}, inplace=True)
+                    # df.rename(columns={old_name: new_col}, inplace=True)
                     names_dict.update({old_name: new_col})
+
+    return df, names_dict
+
+
+def get_dict_tmp_3(df, to_delete):
+
+    names_dict = {}
+
+    for el in to_delete:
+        names_dict.update({el: 'delete'})
+        # df.drop([el], axis=1, inplace=True)
 
     return df, names_dict
 
@@ -160,8 +171,23 @@ def remove_duplicated_columns(df):
 def clean_df(df, dict_names):
 
     for i, j in dict_names.items():
-        import pdb;pdb.set_trace()
+
+        if j == 'delete':
+            df.drop([i], axis=1, inplace=True)
+        else:
+            df.rename(columns={i: j}, inplace=True)
+
+    return df
+
+
+def save_outputs(df, names_dict, output):
+
+    out_file = os.path.join(output, 'final_cleaned_data.tsv')
+    df.to_csv(out_file, sep='\t', index=None)
     
+    with open(os.path.join(output, 'dict_names.pickle'), 'wb') as h:
+        pickle.dump(names_dict, h, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 @click.command(short_help='explore input data valcoiberia')
 @click.option(
@@ -209,28 +235,19 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
 
     #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
-    
-    # df = clean_df(names_dict)
+
+    #TODO <JB> delete when dict is completed
     df, names_dict_2 = get_dict_tmp_1(df, clean_names_1)
     df, names_dict_3 = get_dict_tmp_2(df, clean_names_2)
-    # import pdb;pdb.set_trace()
-    # df = clean_df(names_dict)
+    df, names_dict_4 = get_dict_tmp_3(df, to_delete)
+    names_dict = {**names_dict_2, **names_dict_3, **names_dict_4}
+    import pdb;pdb.set_trace()
+    df = clean_df(df, names_dict)
 
     df = remove_duplicated_columns(df)
-    # import pdb;pdb.set_trace()
-    
-    df.drop(['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
-        'Lin_p_serie', 'Lin_p_numero', 'Lin_Unit', 'lin_p_linea', 'lin_crestastock', 
-        'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
-        'lin_agent2', 'Cba_Codigo'], axis=1, inplace=True)
-    import pdb;pdb.set_trace()
 
     #save outputs
-    out_file = os.path.join(output, 'final_cleaned_data.tsv')
-    df.to_csv(out_file, sep='\t', index=None)
-    import pdb;pdb.set_trace()
-    with open(os.path.join(output, 'dict_names.pickle'), 'wb') as h:
-        pickle.dump(names_dict, h, protocol=pickle.HIGHEST_PROTOCOL)
+    save_outputs(df, names_dict, output)
 
     #get different sections of discount
     rel_df = group_by_discount_section(df)
@@ -246,7 +263,6 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     pl.plot_subgroups(rel_df)
     pl.plot_evolution_discount(df_discount, output)
     pl.plot_products_discounted(df_products, output)
-
 
     #TODO <JB>
     # 1.- delete those columns with many unique
