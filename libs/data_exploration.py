@@ -9,7 +9,7 @@ import plots as pl
 to_delete = ['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
         'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
         'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
-        'lin_agent2', 'Cba_Codigo']
+        'lin_agent2', 'Cba_Codigo', 'Lin_Unit']
 
 
 def explore_columns(df):
@@ -48,8 +48,8 @@ def group_by_discount_section(df):
 
     df_toplot = pd.DataFrame()
     for i, j in [(-1,20), (20,40), (40,60), (60, 100)]:
-        int_df = pd.DataFrame(df[(df['lin_dte'] > i) & \
-            (df['lin_dte'] <= j)].groupby('Tipo_Producto').apply(
+        int_df = pd.DataFrame(df[(df['Descuento aplicado'] > i) & \
+            (df['Descuento aplicado'] <= j)].groupby('Tipo de Producto').apply(
                 lambda x: x.shape[0])).reset_index()
         if i == -1:
             int_df['Descuento'] = '0-{}%'.format(j)
@@ -169,8 +169,11 @@ def remove_duplicated_columns(df):
     return df
 
 
-def clean_df(df, dict_names):
+def clean_df(df, dict_path):
 
+    with open(dict_path, 'rb') as handle:
+        dict_names = pickle.load(handle)
+   
     for i, j in dict_names.items():
 
         if j == 'delete':
@@ -181,13 +184,10 @@ def clean_df(df, dict_names):
     return df
 
 
-def save_outputs(df, names_dict, output):
+def save_outputs(df, output):
 
     out_file = os.path.join(output, 'final_cleaned_data.tsv')
     df.to_csv(out_file, sep='\t', index=None)
-    
-    with open(os.path.join(output, 'dict_names.pickle'), 'wb') as h:
-        pickle.dump(names_dict, h, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 @click.command(short_help='explore input data valcoiberia')
@@ -215,8 +215,8 @@ def save_outputs(df, names_dict, output):
 def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, output):
 
     # Load the data
-    df = pd.read_csv(data, sep='\t', nrows=2000000) 
-    import pdb;pdb.set_trace()
+    df = pd.read_csv(data, sep='\t') 
+
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
     
@@ -237,20 +237,14 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
 
-    #TODO <JB> delete when dict is completed
-    df1, names_dict_2 = get_dict_tmp_1(df, clean_names_1)
-    import pdb; pdb.set_trace()
-    df2, names_dict_3 = get_dict_tmp_2(df1, clean_names_2)
-    import pdb; pdb.set_trace()
-    df3, names_dict_4 = get_dict_tmp_3(df2, to_delete)
-    names_dict_all = {**names_dict_2, **names_dict_3, **names_dict_4}
-    import pdb;pdb.set_trace()
-    df = clean_df(df, names_dict_all)
+    # Provide a dictionary to change names or delete columns (Analysis Trifacta)
+    if names_dict:
+        df = clean_df(df, names_dict)
 
     df = remove_duplicated_columns(df)
     import pdb;pdb.set_trace()
     #save outputs
-    save_outputs(df, names_dict, output)
+    save_outputs(df, output)
 
     #get different sections of discount
     rel_df = group_by_discount_section(df)
