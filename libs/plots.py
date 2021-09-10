@@ -7,7 +7,7 @@ def plot_groups(df):
     sns.set_style('whitegrid')
 
     ax = sns.barplot(data=df, x='Relative_counts', y='Descuento', 
-        hue='Tipo_Producto', hue_order=['Seco', 'Fresco', 'Ultra Fresco'])
+        hue='Tipo de Producto', hue_order=['Seco', 'Fresco', 'Ultra Fresco'])
 
     ax.grid(False)
     ax.spines['top'].set_visible(False)
@@ -24,7 +24,7 @@ def plot_subgroups(df):
 
     for i, j in df.groupby('Descuento'):
         ax = sns.barplot(data=j, x='Relative_counts', y='Descuento', 
-            hue='Tipo_Producto', hue_order=['Seco', 'Fresco', 'Ultra Fresco'])
+            hue='Tipo de Producto', hue_order=['Seco', 'Fresco', 'Ultra Fresco'])
 
         ax.grid(False)
         ax.spines['top'].set_visible(False)
