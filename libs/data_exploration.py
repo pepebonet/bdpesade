@@ -39,27 +39,6 @@ def classify_products(df):
     return pd.concat([Ultra_fresh, fresh, dry])
 
 
-def group_by_discount_section(df):
-
-    df_toplot = pd.DataFrame()
-    for i, j in [(-1,20), (20,40), (40,60), (60, 100)]:
-        int_df = pd.DataFrame(df[(df['lin_dte'] > i) & \
-            (df['lin_dte'] <= j)].groupby('Tipo_Producto').apply(
-                lambda x: x.shape[0])).reset_index()
-        if i == -1:
-            int_df['Descuento'] = '0-{}%'.format(j)
-        else:
-            int_df['Descuento'] = '{}-{}%'.format(i, j)
-        df_toplot = pd.concat([df_toplot, int_df])
-
-    rel_df = pd.DataFrame()
-    for k, l in df_toplot.groupby('Tipo_Producto'):
-        l['Relative_counts'] = l[0] / df['Tipo_Producto'].value_counts()[k]
-        rel_df = pd.concat([rel_df, l])
-
-    return rel_df
-
-
 def limpiar_clientes(df, categoria_cliente):
 
     limp_clientes = pd.read_csv(categoria_cliente, sep='\t')
@@ -71,31 +50,6 @@ def limpiar_clientes(df, categoria_cliente):
     )
 
     return df
-
-
-def group_discount_50(df):
-    df_toplot = pd.DataFrame()
-    for i, j in [(0,49), (50, 100)]:
-        
-        int_df = pd.DataFrame(df[(df['lin_dte'] >= i) & \
-            (df['lin_dte'] <= j)].groupby(['Tipo_Producto', 'year']).apply(
-                lambda x: x.shape[0])).reset_index()
-
-        int_df['Descuento'] = '{}-{}%'.format(i,j)
-        df_toplot = pd.concat([df_toplot, int_df])
-
-    rel_df = pd.DataFrame()
-    for k, l in df_toplot.groupby(['Tipo_Producto', 'year']):
-        l['Relative_counts'] = l[0] / df[(df['Tipo_Producto'] == k[0]) & (df['year'] == k[1])].shape[0]
-        rel_df = pd.concat([rel_df, l])
-
-    return rel_df
-
-
-def analyze_products(df):
-    df = df[df['lin_dte'] >= 50]
-    return df.groupby(['Tipo_Producto', 'sub_descrip']).apply(
-        lambda x: x.shape[0]).reset_index()
 
 
 def remove_duplicated_columns(df):
@@ -129,7 +83,7 @@ def clean_df(df, dict_path):
     return df
 
 
-def save_outputs(df, names_dict, output):
+def save_outputs(df, output):
 
     out_file = os.path.join(output, 'final_cleaned_data.tsv')
     df.to_csv(out_file, sep='\t', index=None)
@@ -190,6 +144,6 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     save_outputs(df, output)
     import pdb;pdb.set_trace()
     
-    
+
 if __name__ == '__main__':
     main()
