@@ -6,11 +6,6 @@ import pandas as pd
 
 import plots as pl
 
-to_delete = ['sal_codigo', 'Hora_Albaran', 'Lin_p_ejercicio', 
-        'Lin_p_serie', 'Lin_p_numero', 'lin_p_linea', 'lin_crestastock', 
-        'Lin_desc_unit', 'tra_codi', 'age_codi', 'age_nom','age_adreca1', 
-        'lin_agent2', 'Cba_Codigo', 'Lin_Unit']
-
 
 def explore_columns(df):
     for col in df:
@@ -48,8 +43,8 @@ def group_by_discount_section(df):
 
     df_toplot = pd.DataFrame()
     for i, j in [(-1,20), (20,40), (40,60), (60, 100)]:
-        int_df = pd.DataFrame(df[(df['Descuento aplicado'] > i) & \
-            (df['Descuento aplicado'] <= j)].groupby('Tipo de Producto').apply(
+        int_df = pd.DataFrame(df[(df['lin_dte'] > i) & \
+            (df['lin_dte'] <= j)].groupby('Tipo_Producto').apply(
                 lambda x: x.shape[0])).reset_index()
         if i == -1:
             int_df['Descuento'] = '0-{}%'.format(j)
@@ -103,56 +98,6 @@ def analyze_products(df):
         lambda x: x.shape[0]).reset_index()
 
 
-def get_dict_tmp_1(df, path):
-    names_dict = {}; cols = df.columns
-    # df1 = df.copy()
-    with open(path) as f:
-        for line in f: 
-            new_col = line.split('\'')[1]
-            column_number = int(line.split('column')[1].split(',')[0]) - 2
-
-            if 'Eliminar' in line:
-                names_dict.update({cols[column_number]: 'delete'})
-                df.drop([cols[column_number]], axis=1, inplace=True)
-            
-            else:
-                df.rename(columns={cols[column_number]: new_col}, inplace=True)
-                names_dict.update({cols[column_number]: new_col})
-    
-    return df, names_dict
-
-
-def get_dict_tmp_2(df, path):
-    names_dict = {}
-    with open(path) as f:
-        for line in f: 
-
-            new_col = line.split('\'')[1]
-            old_name = line.split(',')[0].split('[')[1]
-
-            if old_name in df:
-                if 'Eliminar' in line:
-                    names_dict.update({old_name: 'delete'})
-                    df.drop([old_name], axis=1, inplace=True)
-                
-                else:
-                    df.rename(columns={old_name: new_col}, inplace=True)
-                    names_dict.update({old_name: new_col})
-
-    return df, names_dict
-
-
-def get_dict_tmp_3(df, to_delete):
-
-    names_dict = {}
-
-    for el in to_delete:
-        names_dict.update({el: 'delete'})
-        df.drop([el], axis=1, inplace=True)
-
-    return df, names_dict
-
-
 def remove_duplicated_columns(df):
 
     ncol = len(df.columns)
@@ -184,7 +129,7 @@ def clean_df(df, dict_path):
     return df
 
 
-def save_outputs(df, output):
+def save_outputs(df, names_dict, output):
 
     out_file = os.path.join(output, 'final_cleaned_data.tsv')
     df.to_csv(out_file, sep='\t', index=None)
@@ -215,7 +160,7 @@ def save_outputs(df, output):
 def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, output):
 
     # Load the data
-    df = pd.read_csv(data, sep='\t') 
+    df = pd.read_csv(data, sep='\t', nrows=2000000) 
 
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
@@ -237,34 +182,14 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
 
-    # Provide a dictionary to change names or delete columns (Analysis Trifacta)
-    if names_dict:
-        df = clean_df(df, names_dict)
+    df = clean_df(df, names_dict)
 
     df = remove_duplicated_columns(df)
-    import pdb;pdb.set_trace()
+    
     #save outputs
     save_outputs(df, output)
-
-    #get different sections of discount
-    rel_df = group_by_discount_section(df)
-
-    #split discounts only in two to analyze changes within time 
-    df_discount = group_discount_50(df)
-    df_discount.to_csv(os.path.join(output, 'discount_50.tsv'), sep='\t', index=None)
+    import pdb;pdb.set_trace()
     
-    df_products = analyze_products(df)
-
-    #Generate plots
-    pl.plot_groups(rel_df)
-    pl.plot_subgroups(rel_df)
-    pl.plot_evolution_discount(df_discount, output)
-    pl.plot_products_discounted(df_products, output)
-
-    #TODO <JB>
-    # 1.- delete those columns with many unique
-    # 2.- separate plot generation from cleaning
-
-
+    
 if __name__ == '__main__':
     main()
