@@ -105,6 +105,7 @@ def analyze_products(df):
 
 def get_dict_tmp_1(df, path):
     names_dict = {}; cols = df.columns
+    # df1 = df.copy()
     with open(path) as f:
         for line in f: 
             new_col = line.split('\'')[1]
@@ -112,10 +113,10 @@ def get_dict_tmp_1(df, path):
 
             if 'Eliminar' in line:
                 names_dict.update({cols[column_number]: 'delete'})
-                # df.drop([cols[column_number]], axis=1, inplace=True)
+                df.drop([cols[column_number]], axis=1, inplace=True)
             
             else:
-                # df.rename(columns={cols[column_number]: new_col}, inplace=True)
+                df.rename(columns={cols[column_number]: new_col}, inplace=True)
                 names_dict.update({cols[column_number]: new_col})
     
     return df, names_dict
@@ -132,10 +133,10 @@ def get_dict_tmp_2(df, path):
             if old_name in df:
                 if 'Eliminar' in line:
                     names_dict.update({old_name: 'delete'})
-                    # df.drop([old_name], axis=1, inplace=True)
+                    df.drop([old_name], axis=1, inplace=True)
                 
                 else:
-                    # df.rename(columns={old_name: new_col}, inplace=True)
+                    df.rename(columns={old_name: new_col}, inplace=True)
                     names_dict.update({old_name: new_col})
 
     return df, names_dict
@@ -147,7 +148,7 @@ def get_dict_tmp_3(df, to_delete):
 
     for el in to_delete:
         names_dict.update({el: 'delete'})
-        # df.drop([el], axis=1, inplace=True)
+        df.drop([el], axis=1, inplace=True)
 
     return df, names_dict
 
@@ -215,7 +216,7 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
 
     # Load the data
     df = pd.read_csv(data, sep='\t', nrows=2000000) 
-    
+    import pdb;pdb.set_trace()
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
     
@@ -237,15 +238,17 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     df = classify_products(df)
 
     #TODO <JB> delete when dict is completed
-    df, names_dict_2 = get_dict_tmp_1(df, clean_names_1)
-    df, names_dict_3 = get_dict_tmp_2(df, clean_names_2)
-    df, names_dict_4 = get_dict_tmp_3(df, to_delete)
-    names_dict = {**names_dict_2, **names_dict_3, **names_dict_4}
+    df1, names_dict_2 = get_dict_tmp_1(df, clean_names_1)
+    import pdb; pdb.set_trace()
+    df2, names_dict_3 = get_dict_tmp_2(df1, clean_names_2)
+    import pdb; pdb.set_trace()
+    df3, names_dict_4 = get_dict_tmp_3(df2, to_delete)
+    names_dict_all = {**names_dict_2, **names_dict_3, **names_dict_4}
     import pdb;pdb.set_trace()
-    df = clean_df(df, names_dict)
+    df = clean_df(df, names_dict_all)
 
     df = remove_duplicated_columns(df)
-
+    import pdb;pdb.set_trace()
     #save outputs
     save_outputs(df, names_dict, output)
 
