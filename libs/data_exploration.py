@@ -115,7 +115,7 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
 
     # Load the data
     df = pd.read_csv(data, sep='\t', nrows=2000000) 
-
+    
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
     
