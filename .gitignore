@@ -1,3 +1,4 @@
+libs/.ipynb_checkpoints/
 data/*
 documents/*
 libs/__pycache__/*
