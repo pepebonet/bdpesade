@@ -53,6 +53,13 @@ def analyze_products(df):
         lambda x: x.shape[0]).reset_index()
 
 
+@click.command(short_help='explore input data valcoiberia')
+@click.option(
+    '-d', '--data', required=True, help='tsv file containing the data'
+)
+@click.option(
+    '-o', '--output', help='Path to save file'
+)
 def main(df, output):
     #SCRIPT SHOULD FINISH HERE
     #get different sections of discount
