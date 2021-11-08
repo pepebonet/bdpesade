@@ -99,21 +99,34 @@ def get_error_measurements(test, predictions, df):
     help='choose ML model to perform the analysis'
 )
 @click.option(
-    '-tw', '--train_weeks', default=-2, 
+    '-pa', '--p_arima', default=8, 
+    help='p parameter of the arima model'
+)
+@click.option(
+    '-da', '--d_arima', default=1, 
+    help='d parameter of the arima model'
+)
+@click.option(
+    '-qa', '--q_arima', default=1, 
+    help='q parameter of the arima model'
+)
+@click.option(
+    '-tw', '--train_weeks', default=22, 
     help='number of weeks to get the model trained'
 )
 @click.option(
     '-o', '--output', help='Path to save file'
 )
-def main(data, product_subfamily, product_type, covid, model_type, train_weeks, 
-    output):
+def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
+    p_arima, d_arima, q_arima, output):
 
     df = read_data(data, covid)
 
     df_model = arrange_data_model(df, product_subfamily, product_type)
 
     if model_type == 'arima':
-        test, predictions = md.arima_model(df_model, train_weeks).train_model()
+        test, predictions = md.arima_model(
+            df_model, train_weeks, p_arima, d_arima, q_arima).train_model()
 
     elif model_type == 'gbm':
         predictions = md.gbm_model(df_model, train_weeks).train_model()
