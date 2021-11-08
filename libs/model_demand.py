@@ -1,11 +1,16 @@
 #!/usr/bin/env python3 
 import os
+import sys
 import click
 import pandas as pd
 from math import sqrt
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
+
+sys.path.append('./')
+import libs.models as md
+
 
 def read_data(data, covid):
 
@@ -59,43 +64,15 @@ def arrange_data_model(df, product, prod_type):
     return df_model
 
 
-class arima_model:
-    def __init__(self, data, train_weeks, P=8, D=1, Q=1):
-        self.size = train_weeks
-        self.p = P
-        self.d = D
-        self.q = Q
-        self.X = data['Ground Truth'].values
+def get_error_measurements(test, predictions, df):
 
-    def split_train_test(self):
-        self.train, self.test = self.X[0:self.size], self.X[self.size:len(self.X)]
-        self.history = [x for x in self.train]
-        self.predictions = list()
+    rmse_m = sqrt(mean_squared_error(test, predictions))
+    mae_m = mean_absolute_error(test, predictions)
 
-    def train_model(self):
-
-        self.split_train_test()
-
-        for t in range(len(self.test)):
-            model = ARIMA(self.history, order=(self.p, self.d, self.q))
-            model_fit = model.fit()
-            output = model_fit.forecast()
-            yhat = output[0]
-            self.predictions.append(yhat)
-            obs = self.test[t]
-            self.history.append(obs)
-
-        return self.test, self.predictions
-
+    rmse_a = sqrt(mean_squared_error(test, df['Actual'].tolist()[-len(test):]))
+    mae_a = mean_absolute_error(test, df['Actual'].tolist()[-len(test):])
     
-class gbm_model:
-    def __init__(self, train_weeks):
-        pass
-
-
-class lstm_model:
-    def __init__(self, train_weeks):
-        pass
+    return rmse_m, mae_m, rmse_a, mae_a
 
 
 @click.command(short_help='explore input data valcoiberia')
@@ -122,7 +99,7 @@ class lstm_model:
     help='choose ML model to perform the analysis'
 )
 @click.option(
-    '-tw', '--train_weeks', default=-1, 
+    '-tw', '--train_weeks', default=-2, 
     help='number of weeks to get the model trained'
 )
 @click.option(
@@ -136,15 +113,16 @@ def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
     df_model = arrange_data_model(df, product_subfamily, product_type)
 
     if model_type == 'arima':
-        test, predictions = arima_model(df_model, train_weeks).train_model()
+        test, predictions = md.arima_model(df_model, train_weeks).train_model()
 
     elif model_type == 'gbm':
-        predictions = gbm_model(df_model, train_weeks).train_model()
+        predictions = md.gbm_model(df_model, train_weeks).train_model()
     
     else:
-        predictions = lstm_model(df_model, train_weeks).train_model()
+        predictions = md.lstm_model(df_model, train_weeks).train_model()
 
-    get_error_measurements(test, predictions, df_model)
+    rmse_m, mae_m, rmse_a, mae_a = get_error_measurements(
+        test, predictions, df_model)
     import pdb;pdb.set_trace()
     
 
