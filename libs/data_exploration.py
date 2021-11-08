@@ -4,7 +4,6 @@ import click
 import pickle
 import pandas as pd
 
-import plots as pl
 
 
 def explore_columns(df):
