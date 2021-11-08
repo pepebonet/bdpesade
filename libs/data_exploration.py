@@ -8,6 +8,7 @@ import plots as pl
 
 
 def explore_columns(df):
+
     for col in df:
         if (df[col].isna().sum() > 1000000) or (df[col].nunique() <= 5) \
             or (df[col].value_counts().values[0] > 1000000):
@@ -17,6 +18,7 @@ def explore_columns(df):
 
 
 def date_engineering(df):
+
     df['Fecha_caducidad'] = pd.to_datetime(df['lot_fecha_caducidad'])
     df['Fecha_alta'] = pd.to_datetime(df['lot_fecha_alta'])
     df['Diferencia_caducidad'] = (df['Fecha_caducidad'] - df['Fecha_alta']).dt.days
@@ -28,6 +30,7 @@ def date_engineering(df):
 
 #TODO <JB> This snippet takes nans away, is that what we want?
 def classify_products(df):
+
     Ultra_fresh = df[df['Diferencia_caducidad'] < 15]
     Ultra_fresh['Tipo_Producto'] = 'Ultra Fresco'
     fresh = df[(df['Diferencia_caducidad'] >= 15) & \
@@ -68,7 +71,7 @@ def remove_duplicated_columns(df):
     return df
 
 
-def clean_df(df, dict_path):
+def clean_df_from_dict(df, dict_path):
 
     with open(dict_path, 'rb') as handle:
         dict_names = pickle.load(handle)
@@ -79,6 +82,19 @@ def clean_df(df, dict_path):
             df.drop([i], axis=1, inplace=True)
         else:
             df.rename(columns={i: j}, inplace=True)
+
+    return df
+
+
+def clean_outliers_and_columns(df):
+
+    df.drop(['total factura', 'Coste Medio Articulo', 'Coste Std Articulo', 
+        'Ejercicio', 'Nro_Semana', 'Importe Articulo con IVA', 
+        'Codigo Subfamilia Articulos', 'Fecha Entrega', 'Codigo de Lote', 
+        'Codigo de Envio'], axis=1, inplace=True)
+
+    df = df[df['Descripcion Familia de Articulo'] != 'OTROS PRODUCTOS GENERICOS']
+    df['Fecha_Albaran'] = pd.to_datetime(df['Fecha_Albaran'])
 
     return df
 
@@ -97,24 +113,16 @@ def save_outputs(df, output):
     '-cc', '--categoria_cliente', default='', help='limpieza clientes'
 )
 @click.option(
-    '-cn1', '--clean_names_1', default='', 
-    help='list to rename or delete certain columns'
-)
-@click.option(
-    '-cn2', '--clean_names_2', default='', 
-    help='list to rename or delete certain columns'
-)
-@click.option(
     '-nd', '--names_dict', default='', 
     help='dict containing column names to change or delete '
 )
 @click.option(
     '-o', '--output', help='Path to save file'
 )
-def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, output):
+def main(data, categoria_cliente, names_dict, output):
 
     # Load the data
-    df = pd.read_csv(data, sep='\t', nrows=2000000) 
+    df = pd.read_csv(data, sep='\t') 
     
     # Remove all columns that contain only nans
     df = df.dropna(axis=1, how='all') 
@@ -126,6 +134,7 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     # Drop columns that have the same info in other columns
     df = df.drop(['fam_codi'], axis=1)
 
+    #Delete clients that were errors in the dataset
     if categoria_cliente:
         df = limpiar_clientes(df, categoria_cliente)
 
@@ -136,14 +145,14 @@ def main(data, categoria_cliente, clean_names_1, clean_names_2, names_dict, outp
     #Classify products based on the days to expire into Ultra fresh, fresh and dry
     df = classify_products(df)
 
-    df = clean_df(df, names_dict)
-
+    #Final clean steps --> Delete & rename columns
+    df = clean_df_from_dict(df, names_dict)
     df = remove_duplicated_columns(df)
+    df = clean_outliers_and_columns(df)
     
     #save outputs
     save_outputs(df, output)
-    import pdb;pdb.set_trace()
-    
+
 
 if __name__ == '__main__':
     main()
