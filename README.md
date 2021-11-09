@@ -1,11 +1,10 @@
 # BDP Valcoiberia 
-Final project EMIBA.  
+The objective of the following software is to predict the product demand of a retail company named Valcoiberia. We developed three simple models to work towards this problem and summarize below how to use them. 
 
 
 # Contents
 - [Installation](#Installation)
-- [Usage](#Usage)
-- [Example data](#Example-data)         
+- [Usage](#Usage)      
 
 # Installation
 ## Clone repository
@@ -20,12 +19,46 @@ We highly recommend to use a virtual environment to run the scripts:
 
         conda create --name bdpesade python=3.8
         conda activate bdpesade
-        pip install -e .
+        pip install -r requirements.txt
 
 # Usage
+In order to use the developed software the following steps need to be followed. 
+
+## Unify data into one file
+First, the data which is contained in different folders --one for each year-- is downloaded. Once the data is available, it needs to be put as a unique dataframe to work with it easily. In order to do so, the following command is run (please ensure the folder containing the data is properly added): 
+
+```
+python libs/join_clean_data.py -fd folder/containg/data/ -o output_folder/
+```
+
+This command will generate a tsv file named TotalSales.tsv containig all the information in the folder named output_folder. 
+
+## ETL Process
+
+Next, in order to clean up and perform the ETL process, a different script is used, data_exploration.py. Using the previously generated file as input, together with an additional dictionary containing information of columns to delete and rename and a file to filter out some clients, the following command can be run: 
+
+```
+python libs/data_exploration.py -d output_folder/TotalSales.tsv -o output_folder/ -cc output_folder/limpieza_cat_clientes.csv -nd output_folder/dict_names_final_10thSep.pickle
+```
+
+This commnad generates a cleaned version of the data (final_cleaned_data.tsv) that can be used as input to carry out the forecasting of different products. 
+
+## Product Forecasting
+
+To predict product demand of the company one can use any of the models developed (ARIMA, Gradient Boosting Machines or LSTMs). To simplify the commands to make the predictions, the commands below will run for the default hyperparameters of the models and for a particular product (Mozzarela per pizza).  
 
 
-        python libs/data_exploration.py -d data/TotalSales.tsv -o   tests_8th_Nov/ -cc data/albaranes_de_venta/limpieza_cat_clientes.csv -nd data/albaranes_de_venta/datos_limipios/dict_names_final_10thSep.pickle
+`Option 1:` ARIMA model
+```
+python libs/model_demand.py -dt output_folder/final_cleaned_data.tsv -c after -m arima -tw 22 -o output_folder/
+```
 
+`Option 2:` Gradient Boosting Machines
+```
+python libs/model_demand.py -dt output_folder/final_cleaned_data.tsv -c after -m gbm -tw 22 -o output_folder/
+```
 
-# Example data
+`Option 3:` LSTMs
+```
+python libs/model_demand.py -dt output_folder/final_cleaned_data.tsv -c after -m lstm -tw 22 -o output_folder/
+```
