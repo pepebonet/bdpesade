@@ -1,10 +1,12 @@
-
-
 #!/usr/bin/env python3 
 import numpy as np
 import pandas as pd
+from keras.layers import LSTM
+from keras.layers import Dense
 from xgboost import XGBRegressor
+from keras.models import Sequential
 from statsmodels.tsa.arima.model import ARIMA
+from sklearn.preprocessing import MinMaxScaler
 
 
 class arima_model:
@@ -37,8 +39,8 @@ class arima_model:
 
     
 class gbm_model:
-    def __init__(self, data, train_weeks, n_in=15, n_out=1, 
-        depth=3, lr=0.20, est=1000):
+    def __init__(self, data, train_weeks, lr=0.20, depth=3, est=1000, 
+        n_in=15, n_out=1):
 
         self.raw = np.reshape(data['Ground Truth'].values, (len(data), 1))
         self.size = len(self.raw) - train_weeks
@@ -48,7 +50,7 @@ class gbm_model:
         self.eta = lr
         self.est = est
 
-    def series_to_supervised(self):
+    def series_to_supervised(self, dropnan=True):
 
         df = pd.DataFrame(self.raw)
         cols = list()
@@ -59,6 +61,10 @@ class gbm_model:
             cols.append(df.shift(-i))
 
         agg = pd.concat(cols, axis=1)
+
+        if dropnan:
+            agg.dropna(inplace=True)
+
         self.X = agg.values
 
     def train_test_split(self):
@@ -97,5 +103,49 @@ class gbm_model:
 
 
 class lstm_model:
-    def __init__(self, train_weeks):
-        pass
+    def __init__(self, data, train_weeks, lb=3):
+        self.raw = np.reshape(data['Ground Truth'].values, (len(data), 1)).astype('float32')
+        self.size = train_weeks
+        self.look_back = lb
+        
+    
+    def create_dataset(self, dataset):
+        dataX, dataY = [], []
+        for i in range(len(dataset) - self.look_back-1):
+            a = dataset[i:(i + self.look_back), 0]
+            dataX.append(a)
+            dataY.append(dataset[i + self.look_back, 0])
+
+        return np.array(dataX), np.array(dataY)
+
+    def get_train_test_split(self):
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
+        dataset = self.scaler.fit_transform(self.raw)
+
+        train, test = dataset[0:self.size,:], dataset[self.size:len(dataset),:]
+
+        trainX, self.trainY = self.create_dataset(train)
+        testX, self.testY = self.create_dataset(test)
+
+        self.trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
+        self.testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+
+    def model_func(self):
+
+        self.model = Sequential()
+        self.model.add(LSTM(4, input_shape=(1, self.look_back)))
+        self.model.add(Dense(1))
+        self.model.compile(loss='mean_squared_error', optimizer='adam')
+
+    def train_and_predict(self):
+
+        self.get_train_test_split()
+        self.model_func()
+
+        self.model.fit(self.trainX, self.trainY, epochs=500, batch_size=1, verbose=2)
+        # make and invert predictions
+        testPredict = self.model.predict(self.testX)
+        testPredict = self.scaler.inverse_transform(testPredict)
+        testY = self.scaler.inverse_transform([self.testY])
+        
+        return testY[0], testPredict.flatten()
