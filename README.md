@@ -1,5 +1,5 @@
-# BDP Valcoiberia 
-The objective of the following software is to predict the product demand of a retail company named Valcoiberia. We developed three simple models to work towards this problem and summarize below how to use them. 
+# BDP Esade 
+The objective of the following software is to predict the product demand of a retail company. We developed three simple models to work towards this problem and summarize below how to use them. 
 
 
 # Contents
@@ -62,3 +62,5 @@ python libs/model_demand.py -dt output_folder/final_cleaned_data.tsv -c after -m
 ```
 python libs/model_demand.py -dt output_folder/final_cleaned_data.tsv -c after -m lstm -tw 22 -o output_folder/
 ```
+
+Hyperparameters and additional commands are not discussed here but can be found in the model_demand.py script and adjusted to render different information. Outputs from the running the commands above can be used to investigate and comapre the accuracy of the models and how they compare to how well the company does it.
