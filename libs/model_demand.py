@@ -111,6 +111,26 @@ def get_error_measurements(test, predictions, df):
     help='q parameter of the arima model'
 )
 @click.option(
+    '-lrb', '--learning_rate_boost', default=0.2, 
+    help='learning rate for the gradient boosting model'
+)
+@click.option(
+    '-db', '--depth_boost', default=3, 
+    help='depth of the trees in the GBM'
+)
+@click.option(
+    '-eb', '--est_boost', default=1000, 
+    help='number of estimators in the GBM'
+)
+@click.option(
+    '-ib', '--in_boost', default=15, 
+    help='Number of lag observations as input'
+)
+@click.option(
+    '-ob', '--out_boost', default=1, 
+    help='Number of observations as output'
+)
+@click.option(
     '-tw', '--train_weeks', default=22, 
     help='number of weeks to get the model trained'
 )
@@ -118,7 +138,8 @@ def get_error_measurements(test, predictions, df):
     '-o', '--output', help='Path to save file'
 )
 def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
-    p_arima, d_arima, q_arima, output):
+    p_arima, d_arima, q_arima, learning_rate_boost, depth_boost, est_boost,
+    in_boost, out_boost, output):
 
     df = read_data(data, covid)
 
@@ -129,14 +150,14 @@ def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
             df_model, train_weeks, p_arima, d_arima, q_arima).train_model()
 
     elif model_type == 'gbm':
-        test, predictions = md.gbm_model(df_model, train_weeks).walk_forward_validation()
+        test, predictions = md.gbm_model(df_model, train_weeks, learning_rate_boost, 
+            depth_boost, est_boost, in_boost, out_boost).walk_forward_validation()
     
     else:
-        predictions = md.lstm_model(df_model, train_weeks).train_model()
+        test, predictions = md.lstm_model(df_model, train_weeks).train_and_predict()
 
-    import pdb;pdb.set_trace()
     rmse_m, mae_m, rmse_a, mae_a = get_error_measurements(test, predictions, df_model)
-    
+    import pdb;pdb.set_trace()    
     
 
 if __name__ == '__main__':
