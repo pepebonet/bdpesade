@@ -4,6 +4,7 @@ import os
 import click
 import pandas as pd 
 
+from tqdm import tqdm
 from openpyxl import load_workbook
 
 
@@ -13,19 +14,35 @@ from openpyxl import load_workbook
 @click.option('-o', '--output', help='Path to save file')
 def main(folder_data, output):
 
-    all_year_dfs = {} 
+    all_year_dfs = {}; labels = []
     for folder in [f.path for f in os.scandir(folder_data) if f.is_dir()]:
         df_year = pd.DataFrame(); year = folder.rsplit('/', 1)[-1]
-        
-        for file in os.listdir(folder):
+        counter = 0
+        for file in tqdm(os.listdir(folder)):
             wb = load_workbook(filename=os.path.join(folder, file))
             ws = wb.active
             df = pd.DataFrame(ws.values)
             df = df.rename(columns=df.iloc[0]).drop(axis=0, index=0)
-            df_year = pd.concat([df_year, df])
-            
-        all_year_dfs[year] = df_year
+            try:
+                df.drop(['cpa_observ','cpa_obsser','lin_apliac','lin_observ',
+                    'lin_nnumer','cpa_obsse2','art_observ'], axis=1, inplace=True)
+            except:
+                pass
+            counter += 1
+            label = '{}_{}'.format(year, counter)
+            labels.append(label)
+            all_year_dfs[label] = df
+    
+    import pdb;pdb.set_trace()
+    col_names = all_year_dfs['2021_2'].columns
 
+    for el in labels:
+        all_year_dfs[el].columns = col_names
+    import pdb;pdb.set_trace()
+    final_df = pd.DataFrame()
+    for i, j in all_year_dfs.items():
+        final_df = pd.concat([final_df, j])
+    import pdb;pdb.set_trace()
 
 if __name__ == '__main__':
     main()
