@@ -4,7 +4,6 @@ import sys
 import click
 import pandas as pd
 from math import sqrt
-from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 
@@ -13,7 +12,6 @@ import libs.models as md
 
 
 def read_data(data, covid):
-
 
     df = pd.read_csv(data, sep='\t')
 
@@ -71,8 +69,26 @@ def get_error_measurements(test, predictions, df):
 
     rmse_a = sqrt(mean_squared_error(test, df['Actual'].tolist()[-len(test):]))
     mae_a = mean_absolute_error(test, df['Actual'].tolist()[-len(test):])
+
+    return pd.DataFrame([[rmse_m, rmse_a, 'RMSE'],[mae_m, mae_a, 'MAE']], 
+        columns=['Model', 'Valcoiberia', 'Measurement'])
+
+
+def save_outputs(df_errors, df_model, predictions, product_subfamily, 
+    product_type, model_type, output):
     
-    return rmse_m, mae_m, rmse_a, mae_a
+    product_subfamily = product_subfamily.replace(' ', '_')
+    file = '{}_{}_{}'.format(product_subfamily, product_type, model_type)
+
+    df_errors.to_csv(
+        os.path.join(output, 'errors_{}.tsv'.format(file)), sep='\t', index=None)
+    
+    df_model.to_csv(
+        os.path.join(output, 'data_model_{}.tsv'.format(file)), sep='\t', index=None)
+    
+    preds = pd.DataFrame(predictions, columns=['Predictions'])
+    preds.to_csv(
+        os.path.join(output, 'preds_model_{}.tsv'.format(file)), sep='\t', index=None)
 
 
 @click.command(short_help='explore input data valcoiberia')
@@ -131,6 +147,18 @@ def get_error_measurements(test, predictions, df):
     help='Number of observations as output'
 )
 @click.option(
+    '-lb', '--look_back', default=3, 
+    help='lag values to use in the lstm'
+)
+@click.option(
+    '-bs', '--batch_size', default=1, 
+    help='size for every batch to train the lstm'
+)
+@click.option(
+    '-ep', '--epochs', default=500, 
+    help='number of epochs to train the lstm'
+)
+@click.option(
     '-tw', '--train_weeks', default=22, 
     help='number of weeks to get the model trained'
 )
@@ -139,7 +167,7 @@ def get_error_measurements(test, predictions, df):
 )
 def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
     p_arima, d_arima, q_arima, learning_rate_boost, depth_boost, est_boost,
-    in_boost, out_boost, output):
+    in_boost, out_boost, look_back, batch_size, epochs, output):
 
     df = read_data(data, covid)
 
@@ -154,10 +182,13 @@ def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
             depth_boost, est_boost, in_boost, out_boost).walk_forward_validation()
     
     else:
-        test, predictions = md.lstm_model(df_model, train_weeks).train_and_predict()
+        test, predictions = md.lstm_model(df_model, train_weeks, look_back, batch_size, 
+            epochs).train_and_predict()
 
-    rmse_m, mae_m, rmse_a, mae_a = get_error_measurements(test, predictions, df_model)
-    import pdb;pdb.set_trace()    
+    df_errors = get_error_measurements(test, predictions, df_model)
+
+    save_outputs(df_errors, df_model, predictions, product_subfamily, 
+        product_type, model_type, output)
     
 
 if __name__ == '__main__':
