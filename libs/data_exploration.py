@@ -95,6 +95,11 @@ def clean_outliers_and_columns(df):
     df = df[df['Descripcion Familia de Articulo'] != 'OTROS PRODUCTOS GENERICOS']
     df['Fecha_Albaran'] = pd.to_datetime(df['Fecha_Albaran'])
 
+    try: 
+        df.drop(['lin_numeroserie'], axis=1, inplace=True)
+    except:
+        pass
+
     return df
 
 
