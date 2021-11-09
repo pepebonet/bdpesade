@@ -103,10 +103,12 @@ class gbm_model:
 
 
 class lstm_model:
-    def __init__(self, data, train_weeks, lb=3):
+    def __init__(self, data, train_weeks, lb=3, bs=1, ep=500):
         self.raw = np.reshape(data['Ground Truth'].values, (len(data), 1)).astype('float32')
         self.size = train_weeks
         self.look_back = lb
+        self.batch_size = bs
+        self.epochs = ep
         
     
     def create_dataset(self, dataset):
@@ -133,7 +135,7 @@ class lstm_model:
     def model_func(self):
 
         self.model = Sequential()
-        self.model.add(LSTM(4, input_shape=(1, self.look_back)))
+        self.model.add(LSTM(10, input_shape=(1, self.look_back)))
         self.model.add(Dense(1))
         self.model.compile(loss='mean_squared_error', optimizer='adam')
 
@@ -142,7 +144,8 @@ class lstm_model:
         self.get_train_test_split()
         self.model_func()
 
-        self.model.fit(self.trainX, self.trainY, epochs=500, batch_size=1, verbose=2)
+        self.model.fit(self.trainX, self.trainY, epochs=self.epochs, 
+            batch_size=self.batch_size, verbose=2)
         # make and invert predictions
         testPredict = self.model.predict(self.testX)
         testPredict = self.scaler.inverse_transform(testPredict)
