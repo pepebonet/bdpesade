@@ -2,4 +2,5 @@ libs/.ipynb_checkpoints/
 data/*
 documents/*
 libs/__pycache__/*
+figures_presentation/*
 *tsv
