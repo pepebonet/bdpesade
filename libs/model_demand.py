@@ -77,7 +77,7 @@ def get_error_measurements(test, predictions, df):
 
 @click.command(short_help='explore input data valcoiberia')
 @click.option(
-    '-da', '--data', default='', help='tsv file containing the data'
+    '-dt', '--data', default='', help='tsv file containing the data'
 )
 @click.option(
     '-ps', '--product_subfamily', default='MOZZARELLA PER PIZZA',
@@ -129,14 +129,14 @@ def main(data, product_subfamily, product_type, covid, model_type, train_weeks,
             df_model, train_weeks, p_arima, d_arima, q_arima).train_model()
 
     elif model_type == 'gbm':
-        predictions = md.gbm_model(df_model, train_weeks).train_model()
+        test, predictions = md.gbm_model(df_model, train_weeks).walk_forward_validation()
     
     else:
         predictions = md.lstm_model(df_model, train_weeks).train_model()
 
-    rmse_m, mae_m, rmse_a, mae_a = get_error_measurements(
-        test, predictions, df_model)
     import pdb;pdb.set_trace()
+    rmse_m, mae_m, rmse_a, mae_a = get_error_measurements(test, predictions, df_model)
+    
     
 
 if __name__ == '__main__':
